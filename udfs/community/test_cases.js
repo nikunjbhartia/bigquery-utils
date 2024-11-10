@@ -3702,3 +3702,18 @@ generate_udaf_test("cw_mode_timestamp",
   }
 );
 
+generate_udaf_test("frequent_strings_sketch_build", {
+  input_columns: [`item`, `weight`, '5 NOT AGGREGATE'],
+  input_rows: `SELECT item, 1 as weight
+   FROM UNNEST(['a', 'a', 'c']) as item`,
+  expected_output: `FROM_BASE64('BAEKBQMAAAACAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAQAAAGEBAAAAYw==')`,
+});
+
+generate_udaf_test("frequent_strings_sketch_merge", {
+  input_columns: [`sketch`, `5 NOT AGGREGATE`],
+  input_rows: `SELECT * FROM UNNEST([
+      FROM_BASE64('BAEKBQMAAAACAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAQAAAGEBAAAAYw=='),
+      FROM_BASE64('BAEKBQMAAAACAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAQAAAGEBAAAAYw==')
+    ]) AS sketch`,
+  expected_output: `FROM_BASE64('BAEKBQMAAAACAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAIAAAAAAAAAAQAAAGEBAAAAYw==')`,
+});

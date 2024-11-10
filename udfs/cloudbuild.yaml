@@ -18,7 +18,7 @@ steps:
   # Dynamically create the package.json file based off the libs
   # specified in the js_libs/js_libs.yaml file.
   ############################################################
-- name: gcr.io/$PROJECT_ID/bq_udf_ci:infrastructure-public-image-bqutil
+- name: us-central1-docker.pkg.dev/$PROJECT_ID/bqutils/bq-udf-ci:infrastructure-public-image-bqutil
   id: generate_js_libs_package_json
   entrypoint: python3
   args:
@@ -28,7 +28,7 @@ steps:
   # Install npm packages based off the package.json file
   # created in the previous step.
   ###########################################################
-- name: gcr.io/$PROJECT_ID/bq_udf_ci:infrastructure-public-image-bqutil
+- name: us-central1-docker.pkg.dev/$PROJECT_ID/bqutils/bq-udf-ci:infrastructure-public-image-bqutil
   id: install_npm_packages
   entrypoint: npm
   args:
@@ -38,7 +38,7 @@ steps:
   # to build npm packages into single .js files which will be
   # hosted on GCS and used by BigQuery UDFs.
   ############################################################
-- name: gcr.io/$PROJECT_ID/bq_udf_ci:infrastructure-public-image-bqutil
+- name: us-central1-docker.pkg.dev/$PROJECT_ID/bqutils/bq-udf-ci:infrastructure-public-image-bqutil
   id: generate_webpack_configs
   entrypoint: python3
   args:
@@ -47,7 +47,7 @@ steps:
   ###########################################################
   # Build (via webpack) all js libraries for BigQuery UDFs
   ###########################################################
-- name: gcr.io/$PROJECT_ID/bq_udf_ci:infrastructure-public-image-bqutil
+- name: us-central1-docker.pkg.dev/$PROJECT_ID/bqutils/bq-udf-ci:infrastructure-public-image-bqutil
   id: build_bq_js_libs
   entrypoint: npm
   args:
@@ -69,10 +69,32 @@ steps:
       cd $dir && make clean && make all
       cd ..
     done
+  #########################################################################
+    # Clone datasketches-bigquery apache github repo for generating WASM JS libraries
+    # and copying all sqlx files to the udfs/community folder for deployment.
+    # Build (via emscripten) all WASM libraries for BigQuery Sketch UD(A)Fs
+  #########################################################################
+- name: docker.io/emscripten/emsdk
+  id: sync_apache_datasketches_bigquery_repo
+  entrypoint: bash
+  args:
+  - '-c'
+  - |
+    git clone https://github.com/nikunjbhartia/datasketches-bigquery.git
+    cd datasketches-bigquery
+    git pull
+    git submodule init
+    git submodule update
+    for dir in fi hll kll theta tuple cpc tdigest; do
+      cd $dir && make clean && make all
+      cp *.*js ../../js_builds/
+      cp sqlx/*.sqlx ../../community/
+      cd ..
+    done
   ###########################################################
   # Copy all libs to GCS bucket
   ###########################################################
-- name: gcr.io/$PROJECT_ID/bq_udf_ci:infrastructure-public-image-bqutil
+- name: us-central1-docker.pkg.dev/$PROJECT_ID/bqutils/bq-udf-ci:infrastructure-public-image-bqutil
   id: copy_js_to_gcs
   entrypoint: gcloud
   args:
@@ -83,7 +105,7 @@ steps:
   ###########################################################
   # Deploy UDFs and run unit tests
   ###########################################################
-- name: gcr.io/$PROJECT_ID/bq_udf_ci:infrastructure-public-image-bqutil
+- name: us-central1-docker.pkg.dev/$PROJECT_ID/bqutils/bq-udf-ci:infrastructure-public-image-bqutil
   id: test_udfs
   dir: tests/dataform_testing_framework
   entrypoint: bash
